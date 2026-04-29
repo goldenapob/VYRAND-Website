@@ -1,26 +1,225 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #080f0a;
+  --surface: #0e1812;
+  --tag-bg: #0f1a14;
+  --border: #1a2c22;
+  --accent: #f97316;
+  --accent2: #25a267;
+  --text: #e8e8f0;
+  --muted: #6b8a78;
+  --gradient: linear-gradient(90deg, #25a267, #f97316);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.gradient-text {
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.section-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+  display: inline-block;
+}
+
+.btn-primary {
+  background: linear-gradient(90deg, #f97316, #e06308);
+  color: #ffffff;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 12px 28px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.btn-primary:hover {
+  opacity: 0.88;
+}
+
+.btn-primary-sm {
+  background: linear-gradient(90deg, #f97316, #e06308);
+  color: #ffffff;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.btn-primary-sm:hover {
+  opacity: 0.88;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 12px 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.img-placeholder {
+  background: linear-gradient(135deg, #0a1a0f, #0e1812);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  gap: 8px;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up { animation: fadeInUp 0.6s ease forwards; }
+.animate-fade-in { animation: fadeIn 0.4s ease forwards; }
+.animate-slide-down { animation: slideDown 0.2s ease forwards; }
+.animate-delay-100 { animation-delay: 0.1s; }
+.animate-delay-200 { animation-delay: 0.2s; }
+.animate-delay-300 { animation-delay: 0.3s; }
+.animate-delay-400 { animation-delay: 0.4s; }
+
+/* CSS hover utilities — no JS needed, work in Server Components */
+.hover-accent:hover { color: var(--accent) !important; }
+.hover-text:hover { color: var(--text) !important; }
+.hover-border-accent:hover { border-color: var(--accent) !important; }
+.hover-border-text:hover { border-color: var(--text) !important; }
+
+.card-hover {
+  transition: border-color 0.2s, transform 0.2s;
+}
+.card-hover:hover {
+  border-color: var(--accent) !important;
+  transform: translateY(-4px);
+}
+
+.card-hover-sm {
+  transition: border-color 0.2s, transform 0.2s;
+}
+.card-hover-sm:hover {
+  border-color: var(--accent) !important;
+  transform: translateY(-3px);
+}
+
+.row-hover {
+  transition: background-color 0.15s;
+}
+.row-hover:hover {
+  background-color: var(--surface) !important;
+}
+
+.nav-link {
+  transition: color 0.2s;
+  text-decoration: none;
+}
+.nav-link:hover {
+  color: var(--accent) !important;
+}
+
+.footer-link {
+  transition: color 0.2s;
+  text-decoration: none;
+}
+.footer-link:hover {
+  color: var(--text) !important;
+}
+
+.social-btn {
+  transition: border-color 0.2s, color 0.2s;
+}
+.social-btn:hover {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.dropdown-item {
+  transition: background 0.15s;
+  border-radius: 7px;
+}
+.dropdown-item:hover {
+  background: var(--tag-bg) !important;
+}
+
+.flagship-row-hover {
+  transition: background-color 0.15s;
+}
+.flagship-row-hover:hover {
+  background-color: rgba(37,162,103,0.07) !important;
 }
