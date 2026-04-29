@@ -316,7 +316,7 @@ export default function Footer() {
                   { icon: <FacebookIcon size={16} />, label: "Facebook", href: "https://www.facebook.com/profile.php?id=61588734581783" },
                   { icon: <LinkedinIcon size={16} />, label: "LinkedIn", href: "https://www.linkedin.com/company/vyrand/" },
                   { icon: <YoutubeIcon size={16} />, label: "YouTube", href: "https://youtube.com/@vyrand-ad" },
-                  { icon: <TikTokIcon size={16} />, label: "TikTok", href: "#" },
+                  { icon: <TikTokIcon size={16} />, label: "TikTok", href: "https://www.tiktok.com/@vyrand.ad" },
                 ].map((social) => (
                   <a
                     key={social.label}
