@@ -314,7 +314,7 @@ export default function Footer() {
                   { icon: <InstagramIcon size={16} />, label: "Instagram", href: "https://www.instagram.com/vyrand.ad/" },
                   { icon: <XIcon size={16} />, label: "X", href: "#" },
                   { icon: <FacebookIcon size={16} />, label: "Facebook", href: "#" },
-                  { icon: <LinkedinIcon size={16} />, label: "LinkedIn", href: "#" },
+                  { icon: <LinkedinIcon size={16} />, label: "LinkedIn", href: "https://www.linkedin.com/company/vyrand/" },
                   { icon: <YoutubeIcon size={16} />, label: "YouTube", href: "https://youtube.com/@vyrand-ad" },
                   { icon: <TikTokIcon size={16} />, label: "TikTok", href: "#" },
                 ].map((social) => (
