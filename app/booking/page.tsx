@@ -165,8 +165,7 @@ export default function BookingPage() {
   const canProceed = () => {
     if (step === 1) return selectedExp !== "";
     if (step === 2) return selectedDate !== "" && selectedTime !== "";
-    if (step === 3)
-      return contact.name !== "" && contact.email !== "" && contact.phone !== "";
+    if (step === 3) return loggedInAs !== null;
     return true;
   };
 
@@ -495,18 +494,11 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* STEP 3 — Contact Details */}
+        {/* STEP 3 — Auth */}
         {step === 3 && (
-          <div>
-            <h2 style={{ fontSize: "1.375rem", fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>
-              Your details
-            </h2>
-            <p style={{ fontSize: "0.875rem", color: "var(--muted)", marginBottom: 24 }}>
-              We&apos;ll send your confirmation to this email.
-            </p>
-
-            {/* Auth status banner */}
-            {loggedInAs ? (
+          loggedInAs ? (
+            /* Logged in — show pre-filled contact details */
+            <div>
               <div
                 style={{
                   display: "flex",
@@ -516,7 +508,7 @@ export default function BookingPage() {
                   backgroundColor: "rgba(37,162,103,0.08)",
                   border: "1px solid rgba(37,162,103,0.3)",
                   borderRadius: 8,
-                  marginBottom: 24,
+                  marginBottom: 28,
                 }}
               >
                 <User size={15} color="#25a267" />
@@ -525,142 +517,137 @@ export default function BookingPage() {
                   {autoFilled && " · Details pre-filled"}
                 </span>
               </div>
-            ) : (
-              <div
-                style={{
-                  padding: "14px 16px",
-                  backgroundColor: "var(--surface)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 8,
-                  marginBottom: 24,
-                }}
-              >
-                <p style={{ fontSize: "0.82rem", color: "var(--muted)", marginBottom: 10 }}>
-                  {autoFilled
-                    ? "Details loaded from your last visit."
-                    : "Save your details for next time — sign in or create a free account."}
-                </p>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button
-                    onClick={saveAndLogin}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      fontSize: "0.8rem",
-                      fontWeight: 600,
-                      color: "var(--text)",
-                      background: "none",
-                      border: "1px solid var(--border)",
-                      borderRadius: 6,
-                      cursor: "pointer",
-                      padding: "7px 14px",
-                      transition: "border-color 0.15s",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
-                  >
-                    <LogIn size={13} /> Sign in
-                  </button>
-                  <button
-                    onClick={saveAndRegister}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      fontSize: "0.8rem",
-                      fontWeight: 600,
-                      color: "#fff",
-                      background: "var(--accent)",
-                      border: "1px solid var(--accent)",
-                      borderRadius: 6,
-                      cursor: "pointer",
-                      padding: "7px 14px",
-                      transition: "opacity 0.15s",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
-                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-                  >
-                    Create account →
-                  </button>
-                </div>
-              </div>
-            )}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {[
-                { key: "name", label: "Full Name", type: "text", placeholder: "Marc Torres" },
-                { key: "email", label: "Email Address", type: "email", placeholder: "marc@email.com" },
-                { key: "phone", label: "Phone Number", type: "tel", placeholder: "+34 600 000 000" },
-              ].map((field) => (
-                <div key={field.key}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {[
+                  { key: "name", label: "Full Name", type: "text", placeholder: "Marc Torres" },
+                  { key: "phone", label: "Phone Number", type: "tel", placeholder: "+34 600 000 000" },
+                ].map((field) => (
+                  <div key={field.key}>
+                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>
+                      {field.label}
+                    </label>
+                    <input
+                      type={field.type}
+                      placeholder={field.placeholder}
+                      value={contact[field.key as keyof typeof contact]}
+                      onChange={(e) => setContact((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                      style={{
+                        width: "100%",
+                        padding: "13px 16px",
+                        backgroundColor: "var(--surface)",
+                        border: `1px solid ${contact[field.key as keyof typeof contact] ? "var(--accent)" : "var(--border)"}`,
+                        borderRadius: 8,
+                        color: "var(--text)",
+                        fontSize: "0.95rem",
+                        outline: "none",
+                        transition: "border-color 0.2s",
+                        boxSizing: "border-box",
+                      }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                      onBlur={(e) => { if (!contact[field.key as keyof typeof contact]) e.currentTarget.style.borderColor = "var(--border)"; }}
+                    />
+                  </div>
+                ))}
+
+                <div>
                   <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>
-                    {field.label}
+                    Notes (optional)
                   </label>
-                  <input
-                    type={field.type}
-                    placeholder={field.placeholder}
-                    value={contact[field.key as keyof typeof contact]}
-                    onChange={(e) =>
-                      setContact((prev) => ({ ...prev, [field.key]: e.target.value }))
-                    }
+                  <textarea
+                    placeholder="Accessibility requirements, special requests..."
+                    value={contact.notes}
+                    onChange={(e) => setContact((prev) => ({ ...prev, notes: e.target.value }))}
+                    rows={3}
                     style={{
                       width: "100%",
                       padding: "13px 16px",
                       backgroundColor: "var(--surface)",
-                      border: `1px solid ${contact[field.key as keyof typeof contact] ? "var(--accent)" : "var(--border)"}`,
+                      border: "1px solid var(--border)",
                       borderRadius: 8,
                       color: "var(--text)",
                       fontSize: "0.95rem",
                       outline: "none",
+                      resize: "vertical",
+                      fontFamily: "inherit",
                       transition: "border-color 0.2s",
+                      boxSizing: "border-box",
                     }}
-                    onFocus={(e) =>
-                      ((e.currentTarget as HTMLElement).style.borderColor = "var(--accent)")
-                    }
-                    onBlur={(e) => {
-                      if (!contact[field.key as keyof typeof contact]) {
-                        (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
-                      }
-                    }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
                   />
                 </div>
-              ))}
-
-              <div>
-                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>
-                  Notes (optional)
-                </label>
-                <textarea
-                  placeholder="Any accessibility requirements, special requests, or questions..."
-                  value={contact.notes}
-                  onChange={(e) =>
-                    setContact((prev) => ({ ...prev, notes: e.target.value }))
-                  }
-                  rows={3}
-                  style={{
-                    width: "100%",
-                    padding: "13px 16px",
-                    backgroundColor: "var(--surface)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                    color: "var(--text)",
-                    fontSize: "0.95rem",
-                    outline: "none",
-                    resize: "vertical",
-                    fontFamily: "inherit",
-                    transition: "border-color 0.2s",
-                  }}
-                  onFocus={(e) =>
-                    ((e.currentTarget as HTMLElement).style.borderColor = "var(--accent)")
-                  }
-                  onBlur={(e) =>
-                    ((e.currentTarget as HTMLElement).style.borderColor = "var(--border)")
-                  }
-                />
               </div>
             </div>
-          </div>
+          ) : (
+            /* Not logged in — auth only, nothing else */
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                textAlign: "center",
+                padding: "64px 24px",
+              }}
+            >
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  backgroundColor: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 24,
+                }}
+              >
+                <User size={24} color="var(--muted)" />
+              </div>
+
+              <h2 style={{ fontSize: "1.375rem", fontWeight: 800, color: "var(--text)", textTransform: "uppercase", letterSpacing: "-0.01em", marginBottom: 10 }}>
+                Your details
+              </h2>
+              <p style={{ fontSize: "0.9rem", color: "var(--muted)", maxWidth: 320, lineHeight: 1.6, marginBottom: 36 }}>
+                Sign in or create a free account. Your name, email and phone will be saved — no need to fill them in next time.
+              </p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 320 }}>
+                <button
+                  onClick={saveAndRegister}
+                  className="btn-primary"
+                  style={{ justifyContent: "center", fontSize: "0.95rem", padding: "13px 24px" }}
+                >
+                  Create account →
+                </button>
+                <button
+                  onClick={saveAndLogin}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    fontSize: "0.9rem",
+                    fontWeight: 600,
+                    color: "var(--text)",
+                    background: "none",
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    padding: "12px 24px",
+                    transition: "border-color 0.15s",
+                    width: "100%",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+                >
+                  <LogIn size={15} /> Sign in
+                </button>
+              </div>
+            </div>
+          )
         )}
 
         {/* STEP 4 — Review */}
@@ -782,7 +769,7 @@ export default function BookingPage() {
             </Link>
           )}
 
-          {step < 4 ? (
+          {step < 4 && !(step === 3 && !loggedInAs) ? (
             <button
               onClick={() => canProceed() && setStep((prev) => (prev + 1) as Step)}
               className="btn-primary"
