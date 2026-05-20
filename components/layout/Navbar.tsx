@@ -69,9 +69,9 @@ export default function Navbar() {
         {/* Logo */}
         <Link href="/" style={{ textDecoration: "none", flexShrink: 0, display: "flex", alignItems: "center" }}>
           <img
-            src="/images/logo-nav.png"
+            src="/images/logo_vyrand_cropped.png"
             alt="VYRAND"
-            style={{ height: 22, width: "auto", display: "block" }}
+            style={{ height: 28, width: "auto", display: "block" }}
           />
         </Link>
 
