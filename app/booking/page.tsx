@@ -2,12 +2,17 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { experiences } from "@/lib/experiences";
-import { ArrowRight, ArrowLeft, Check, ChevronDown } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { ArrowRight, ArrowLeft, Check } from "lucide-react";
 
 type Step = 1 | 2 | 3 | 4;
 
 export default function BookingPage() {
+  const router = useRouter();
+  const supabase = createClient();
+
   const [step, setStep] = useState<Step>(1);
   const [selectedExp, setSelectedExp] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>("");
@@ -19,6 +24,8 @@ export default function BookingPage() {
     phone: "",
     notes: "",
   });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   // Read ?exp= from URL on the client, avoiding useSearchParams Suspense issues
   useEffect(() => {
@@ -591,13 +598,49 @@ export default function BookingPage() {
               Continue <ArrowRight size={15} />
             </button>
           ) : (
-            <Link
-              href="/booking/checkout"
+            <button
+              onClick={async () => {
+                if (!currentExp) return;
+                setSubmitting(true);
+                setSubmitError("");
+
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                  router.push(`/login?redirect=/booking?exp=${selectedExp}`);
+                  return;
+                }
+
+                const { error } = await supabase.from("bookings").insert({
+                  user_id: user.id,
+                  experience_id: selectedExp,
+                  booking_date: selectedDate,
+                  booking_time: selectedTime,
+                  group_size: groupSize,
+                  total_price: totalPrice,
+                  contact_name: contact.name,
+                  contact_email: contact.email,
+                  contact_phone: contact.phone,
+                  notes: contact.notes || null,
+                });
+
+                if (error) {
+                  setSubmitError("Something went wrong. Please try again.");
+                  setSubmitting(false);
+                } else {
+                  router.push("/booking/confirmed");
+                }
+              }}
               className="btn-primary"
-              style={{ fontSize: "1rem", padding: "13px 28px" }}
+              disabled={submitting}
+              style={{ fontSize: "1rem", padding: "13px 28px", opacity: submitting ? 0.6 : 1, cursor: submitting ? "not-allowed" : "pointer" }}
             >
-              Proceed to Payment <ArrowRight size={17} />
-            </Link>
+              {submitting ? "Confirming..." : <>Confirm Booking <ArrowRight size={17} /></>}
+            </button>
+          )}
+          {submitError && (
+            <p style={{ fontSize: "0.85rem", color: "#f87171", marginTop: 8, textAlign: "right" }}>
+              {submitError}
+            </p>
           )}
         </div>
       </div>
