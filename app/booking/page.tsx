@@ -28,15 +28,19 @@ export default function BookingPage() {
   const [submitError, setSubmitError] = useState("");
   const [loggedInAs, setLoggedInAs] = useState<string | null>(null);
   const [autoFilled, setAutoFilled] = useState(false);
+  // Prevent the step-3 pre-fill from overriding data the user explicitly entered
+  const [skipPrefill, setSkipPrefill] = useState(false);
+
+  const DRAFT_KEY = "vyrand_booking_draft";
+  const DRAFT_TTL = 30 * 60 * 1000; // 30 minutes
 
   // Read ?exp= from URL on the client, avoiding useSearchParams Suspense issues.
   // Also restore any booking draft saved before a login redirect.
   useEffect(() => {
-    // Check for a saved draft first (returned from login)
+    // Check for a saved draft (localStorage survives auth redirects)
     try {
-      const raw = sessionStorage.getItem("vyrand_booking_draft");
+      const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
-        sessionStorage.removeItem("vyrand_booking_draft");
         const draft = JSON.parse(raw) as {
           selectedExp: string;
           selectedDate: string;
@@ -44,14 +48,21 @@ export default function BookingPage() {
           groupSize: number;
           contact: typeof contact;
           returnStep: Step;
+          savedAt: number;
         };
-        setSelectedExp(draft.selectedExp ?? "");
-        setSelectedDate(draft.selectedDate ?? "");
-        setSelectedTime(draft.selectedTime ?? "");
-        setGroupSize(draft.groupSize ?? 2);
-        setContact(draft.contact ?? { name: "", email: "", phone: "", notes: "" });
-        setStep(draft.returnStep ?? 4);
-        return; // skip the ?exp= logic — draft already has it
+        // Discard if older than 30 min
+        if (draft.savedAt && Date.now() - draft.savedAt < DRAFT_TTL) {
+          localStorage.removeItem(DRAFT_KEY);
+          setSelectedExp(draft.selectedExp ?? "");
+          setSelectedDate(draft.selectedDate ?? "");
+          setSelectedTime(draft.selectedTime ?? "");
+          setGroupSize(draft.groupSize ?? 2);
+          setContact(draft.contact ?? { name: "", email: "", phone: "", notes: "" });
+          setStep(draft.returnStep ?? 4);
+          setSkipPrefill(true); // user already provided this data — don't overwrite
+          return;
+        }
+        localStorage.removeItem(DRAFT_KEY);
       }
     } catch { /* ignore */ }
 
@@ -63,18 +74,19 @@ export default function BookingPage() {
     }
   }, []);
 
-  // Save full booking state to sessionStorage and navigate to login
+  // Save full booking state to localStorage and navigate to login
   const saveAndLogin = () => {
     try {
-      sessionStorage.setItem(
-        "vyrand_booking_draft",
+      localStorage.setItem(
+        DRAFT_KEY,
         JSON.stringify({
           selectedExp,
           selectedDate,
           selectedTime,
           groupSize,
           contact,
-          returnStep: 4 as Step, // land on Review after login
+          returnStep: 4 as Step,
+          savedAt: Date.now(),
         })
       );
     } catch { /* ignore */ }
@@ -83,9 +95,9 @@ export default function BookingPage() {
     );
   };
 
-  // When reaching Step 3, pre-fill contact details
+  // When reaching Step 3, pre-fill contact details (skipped if restored from a draft)
   useEffect(() => {
-    if (step !== 3) return;
+    if (step !== 3 || skipPrefill) return;
 
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (user) {
@@ -109,7 +121,7 @@ export default function BookingPage() {
         setLoggedInAs(savedEmail);
         if (savedName || savedPhone) setAutoFilled(true);
       } else {
-        // Fallback: localStorage for returning guests on the same device
+        // Fallback: saved contact for returning guests on the same device
         try {
           const raw = localStorage.getItem("vyrand_contact");
           if (raw) {
@@ -122,12 +134,10 @@ export default function BookingPage() {
             }));
             if (saved.name || saved.email) setAutoFilled(true);
           }
-        } catch {
-          // ignore parse errors
-        }
+        } catch { /* ignore */ }
       }
     });
-  }, [step]);
+  }, [step, skipPrefill]);
 
   const currentExp = experiences.find((e) => e.id === selectedExp);
   const totalPrice = currentExp ? currentExp.pricePerPerson * groupSize : 0;
