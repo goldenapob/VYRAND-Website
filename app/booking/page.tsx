@@ -74,8 +74,8 @@ export default function BookingPage() {
     }
   }, []);
 
-  // Save full booking state to localStorage and navigate to login
-  const saveAndLogin = () => {
+  // Save full booking state to localStorage and navigate to auth pages
+  const saveDraft = () => {
     try {
       localStorage.setItem(
         DRAFT_KEY,
@@ -90,9 +90,18 @@ export default function BookingPage() {
         })
       );
     } catch { /* ignore */ }
-    router.push(
-      `/login?redirect=${encodeURIComponent("/booking" + (selectedExp ? `?exp=${selectedExp}` : ""))}`
-    );
+  };
+
+  const bookingRedirect = encodeURIComponent("/booking" + (selectedExp ? `?exp=${selectedExp}` : ""));
+
+  const saveAndLogin = () => {
+    saveDraft();
+    router.push(`/login?redirect=${bookingRedirect}`);
+  };
+
+  const saveAndRegister = () => {
+    saveDraft();
+    router.push(`/register?redirect=${bookingRedirect}`);
   };
 
   // When reaching Step 3, pre-fill contact details (skipped if restored from a draft)
@@ -519,36 +528,62 @@ export default function BookingPage() {
             ) : (
               <div
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "12px 16px",
+                  padding: "14px 16px",
                   backgroundColor: "var(--surface)",
                   border: "1px solid var(--border)",
                   borderRadius: 8,
                   marginBottom: 24,
                 }}
               >
-                <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>
-                  {autoFilled ? "Details loaded from your last visit." : "Booked with us before?"}
-                </span>
-                <button
-                  onClick={saveAndLogin}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    fontSize: "0.82rem",
-                    fontWeight: 600,
-                    color: "var(--accent)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                >
-                  <LogIn size={13} /> Sign in →
-                </button>
+                <p style={{ fontSize: "0.82rem", color: "var(--muted)", marginBottom: 10 }}>
+                  {autoFilled
+                    ? "Details loaded from your last visit."
+                    : "Save your details for next time — sign in or create a free account."}
+                </p>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    onClick={saveAndLogin}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      color: "var(--text)",
+                      background: "none",
+                      border: "1px solid var(--border)",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      padding: "7px 14px",
+                      transition: "border-color 0.15s",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+                  >
+                    <LogIn size={13} /> Sign in
+                  </button>
+                  <button
+                    onClick={saveAndRegister}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      color: "#fff",
+                      background: "var(--accent)",
+                      border: "1px solid var(--accent)",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      padding: "7px 14px",
+                      transition: "opacity 0.15s",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                  >
+                    Create account →
+                  </button>
+                </div>
               </div>
             )}
 
