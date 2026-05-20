@@ -19,7 +19,29 @@ insert into public.experience_prices (id, price_per_person) values
   ('terrain',  70)
 on conflict (id) do nothing;
 
--- 2. Bookings
+-- 2. User profiles (name + phone persisted per user)
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  full_name text,
+  phone text,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.profiles enable row level security;
+
+create policy "Users read own profile"
+  on public.profiles for select
+  using (auth.uid() = id);
+
+create policy "Users upsert own profile"
+  on public.profiles for insert
+  with check (auth.uid() = id);
+
+create policy "Users update own profile"
+  on public.profiles for update
+  using (auth.uid() = id);
+
+-- 3. Bookings (contact_phone here is per-booking; profiles table is the persistent copy)
 create table if not exists public.bookings (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade not null,
@@ -36,7 +58,7 @@ create table if not exists public.bookings (
   created_at timestamptz not null default now()
 );
 
--- 3. Row Level Security
+-- 4. Row Level Security
 alter table public.experience_prices enable row level security;
 alter table public.bookings enable row level security;
 

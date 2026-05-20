@@ -30,6 +30,8 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // Protect /account and /admin — redirect to /login if not authenticated
+  // /booking is intentionally NOT protected here: unauthenticated users can browse
+  // the form and are prompted to sign in at Step 3 (Your Details) or at submission.
   const protectedPaths = ["/account", "/admin"];
   const isProtected = protectedPaths.some((p) =>
     request.nextUrl.pathname.startsWith(p)

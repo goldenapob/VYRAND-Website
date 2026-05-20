@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { experiences } from "@/lib/experiences";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowRight, ArrowLeft, Check } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, User, LogIn } from "lucide-react";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -26,9 +26,35 @@ export default function BookingPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [loggedInAs, setLoggedInAs] = useState<string | null>(null);
+  const [autoFilled, setAutoFilled] = useState(false);
 
-  // Read ?exp= from URL on the client, avoiding useSearchParams Suspense issues
+  // Read ?exp= from URL on the client, avoiding useSearchParams Suspense issues.
+  // Also restore any booking draft saved before a login redirect.
   useEffect(() => {
+    // Check for a saved draft first (returned from login)
+    try {
+      const raw = sessionStorage.getItem("vyrand_booking_draft");
+      if (raw) {
+        sessionStorage.removeItem("vyrand_booking_draft");
+        const draft = JSON.parse(raw) as {
+          selectedExp: string;
+          selectedDate: string;
+          selectedTime: string;
+          groupSize: number;
+          contact: typeof contact;
+          returnStep: Step;
+        };
+        setSelectedExp(draft.selectedExp ?? "");
+        setSelectedDate(draft.selectedDate ?? "");
+        setSelectedTime(draft.selectedTime ?? "");
+        setGroupSize(draft.groupSize ?? 2);
+        setContact(draft.contact ?? { name: "", email: "", phone: "", notes: "" });
+        setStep(draft.returnStep ?? 4);
+        return; // skip the ?exp= logic — draft already has it
+      }
+    } catch { /* ignore */ }
+
     const params = new URLSearchParams(window.location.search);
     const exp = params.get("exp");
     if (exp) {
@@ -36,6 +62,72 @@ export default function BookingPage() {
       setStep(2);
     }
   }, []);
+
+  // Save full booking state to sessionStorage and navigate to login
+  const saveAndLogin = () => {
+    try {
+      sessionStorage.setItem(
+        "vyrand_booking_draft",
+        JSON.stringify({
+          selectedExp,
+          selectedDate,
+          selectedTime,
+          groupSize,
+          contact,
+          returnStep: 4 as Step, // land on Review after login
+        })
+      );
+    } catch { /* ignore */ }
+    router.push(
+      `/login?redirect=${encodeURIComponent("/booking" + (selectedExp ? `?exp=${selectedExp}` : ""))}`
+    );
+  };
+
+  // When reaching Step 3, pre-fill contact details
+  useEffect(() => {
+    if (step !== 3) return;
+
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        // Prefer profiles table; fall back to user metadata
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, phone")
+          .eq("id", user.id)
+          .single();
+
+        const meta = user.user_metadata ?? {};
+        const savedName = profile?.full_name ?? meta.full_name ?? meta.name ?? "";
+        const savedPhone = profile?.phone ?? meta.phone ?? "";
+        const savedEmail = user.email ?? "";
+        setContact((prev) => ({
+          ...prev,
+          name: prev.name || savedName,
+          email: prev.email || savedEmail,
+          phone: prev.phone || savedPhone,
+        }));
+        setLoggedInAs(savedEmail);
+        if (savedName || savedPhone) setAutoFilled(true);
+      } else {
+        // Fallback: localStorage for returning guests on the same device
+        try {
+          const raw = localStorage.getItem("vyrand_contact");
+          if (raw) {
+            const saved = JSON.parse(raw) as { name?: string; email?: string; phone?: string };
+            setContact((prev) => ({
+              ...prev,
+              name: prev.name || saved.name || "",
+              email: prev.email || saved.email || "",
+              phone: prev.phone || saved.phone || "",
+            }));
+            if (saved.name || saved.email) setAutoFilled(true);
+          }
+        } catch {
+          // ignore parse errors
+        }
+      }
+    });
+  }, [step]);
 
   const currentExp = experiences.find((e) => e.id === selectedExp);
   const totalPrice = currentExp ? currentExp.pricePerPerson * groupSize : 0;
@@ -390,9 +482,65 @@ export default function BookingPage() {
             <h2 style={{ fontSize: "1.375rem", fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>
               Your details
             </h2>
-            <p style={{ fontSize: "0.875rem", color: "var(--muted)", marginBottom: 32 }}>
+            <p style={{ fontSize: "0.875rem", color: "var(--muted)", marginBottom: 24 }}>
               We&apos;ll send your confirmation to this email.
             </p>
+
+            {/* Auth status banner */}
+            {loggedInAs ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "12px 16px",
+                  backgroundColor: "rgba(37,162,103,0.08)",
+                  border: "1px solid rgba(37,162,103,0.3)",
+                  borderRadius: 8,
+                  marginBottom: 24,
+                }}
+              >
+                <User size={15} color="#25a267" />
+                <span style={{ fontSize: "0.82rem", color: "#25a267", fontWeight: 500 }}>
+                  Signed in as <strong>{loggedInAs}</strong>
+                  {autoFilled && " · Details pre-filled"}
+                </span>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 16px",
+                  backgroundColor: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  marginBottom: 24,
+                }}
+              >
+                <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>
+                  {autoFilled ? "Details loaded from your last visit." : "Booked with us before?"}
+                </span>
+                <button
+                  onClick={saveAndLogin}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    color: "var(--accent)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
+                >
+                  <LogIn size={13} /> Sign in →
+                </button>
+              </div>
+            )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {[
@@ -606,7 +754,7 @@ export default function BookingPage() {
 
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) {
-                  router.push(`/login?redirect=/booking?exp=${selectedExp}`);
+                  saveAndLogin();
                   return;
                 }
 
@@ -627,6 +775,24 @@ export default function BookingPage() {
                   setSubmitError("Something went wrong. Please try again.");
                   setSubmitting(false);
                 } else {
+                  // Persist name + phone to profiles table and user metadata
+                  await Promise.all([
+                    supabase.from("profiles").upsert({
+                      id: user.id,
+                      full_name: contact.name,
+                      phone: contact.phone,
+                      updated_at: new Date().toISOString(),
+                    }),
+                    supabase.auth.updateUser({
+                      data: { full_name: contact.name, phone: contact.phone },
+                    }),
+                  ]);
+                  try {
+                    localStorage.setItem(
+                      "vyrand_contact",
+                      JSON.stringify({ name: contact.name, email: contact.email, phone: contact.phone })
+                    );
+                  } catch { /* ignore */ }
                   router.push("/booking/confirmed");
                 }
               }}
