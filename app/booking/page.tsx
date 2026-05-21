@@ -178,6 +178,23 @@ export default function BookingPage() {
     "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00",
   ];
 
+  // A slot is disabled when it's less than 60 minutes from now (today only).
+  // At exactly now+60min the slot is still available (< not <=).
+  const isTimeDisabled = (time: string): boolean => {
+    if (!selectedDate) return false;
+    const todayStr = new Date().toISOString().split("T")[0];
+    if (selectedDate !== todayStr) return false;
+    const [hour] = time.split(":").map(Number);
+    const slot = new Date(selectedDate);
+    slot.setHours(hour, 0, 0, 0);
+    return slot < new Date(Date.now() + 60 * 60 * 1000);
+  };
+
+  // Clear selected time if it becomes unavailable when the date changes to today.
+  useEffect(() => {
+    if (selectedTime && isTimeDisabled(selectedTime)) setSelectedTime("");
+  }, [selectedDate]);
+
   const canProceed = () => {
     if (step === 1) return selectedExp !== "";
     if (step === 2) return selectedDate !== "" && selectedTime !== "";
@@ -453,25 +470,32 @@ export default function BookingPage() {
                 Select Time
               </label>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {availableTimes.map((time) => (
-                  <button
-                    key={time}
-                    onClick={() => setSelectedTime(time)}
-                    style={{
-                      padding: "10px 20px",
-                      borderRadius: 8,
-                      border: `1px solid ${selectedTime === time ? "var(--accent)" : "var(--border)"}`,
-                      backgroundColor: selectedTime === time ? "rgba(249,115,22,0.1)" : "var(--surface)",
-                      color: selectedTime === time ? "var(--accent)" : "var(--text)",
-                      fontSize: "0.9rem",
-                      fontWeight: selectedTime === time ? 700 : 400,
-                      cursor: "pointer",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {time}
-                  </button>
-                ))}
+                {availableTimes.map((time) => {
+                  const disabled = isTimeDisabled(time);
+                  const selected = selectedTime === time;
+                  return (
+                    <button
+                      key={time}
+                      onClick={() => !disabled && setSelectedTime(time)}
+                      disabled={disabled}
+                      style={{
+                        padding: "10px 20px",
+                        borderRadius: 8,
+                        border: `1px solid ${selected ? "var(--accent)" : "var(--border)"}`,
+                        backgroundColor: selected ? "rgba(249,115,22,0.1)" : "var(--surface)",
+                        color: disabled ? "var(--muted)" : selected ? "var(--accent)" : "var(--text)",
+                        fontSize: "0.9rem",
+                        fontWeight: selected ? 700 : 400,
+                        cursor: disabled ? "not-allowed" : "pointer",
+                        opacity: disabled ? 0.4 : 1,
+                        transition: "all 0.15s",
+                        textDecoration: disabled ? "line-through" : "none",
+                      }}
+                    >
+                      {time}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
