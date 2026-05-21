@@ -37,41 +37,57 @@ export default function BookingPage() {
   // Read ?exp= from URL on the client, avoiding useSearchParams Suspense issues.
   // Also restore any booking draft saved before a login redirect.
   useEffect(() => {
-    // Check for a saved draft (localStorage survives auth redirects)
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) {
-        const draft = JSON.parse(raw) as {
-          selectedExp: string;
-          selectedDate: string;
-          selectedTime: string;
-          groupSize: number;
-          contact: typeof contact;
-          returnStep: Step;
-          savedAt: number;
-        };
-        // Discard if older than 30 min
-        if (draft.savedAt && Date.now() - draft.savedAt < DRAFT_TTL) {
-          localStorage.removeItem(DRAFT_KEY);
-          setSelectedExp(draft.selectedExp ?? "");
-          setSelectedDate(draft.selectedDate ?? "");
-          setSelectedTime(draft.selectedTime ?? "");
-          setGroupSize(draft.groupSize ?? 2);
-          setContact(draft.contact ?? { name: "", email: "", phone: "", notes: "" });
-          setStep(draft.returnStep ?? 4);
-          setSkipPrefill(true); // user already provided this data — don't overwrite
-          return;
-        }
-        localStorage.removeItem(DRAFT_KEY);
-      }
-    } catch { /* ignore */ }
+    const init = async () => {
+      // Check for a saved draft (localStorage survives auth redirects)
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (raw) {
+          const draft = JSON.parse(raw) as {
+            selectedExp: string;
+            selectedDate: string;
+            selectedTime: string;
+            groupSize: number;
+            contact: typeof contact;
+            returnStep: Step;
+            savedAt: number;
+          };
+          // Discard if older than 30 min
+          if (draft.savedAt && Date.now() - draft.savedAt < DRAFT_TTL) {
+            // Only jump to Review (step 4) if the user actually authenticated.
+            // If they pressed Back from login/register without completing auth,
+            // send them back to Step 3 so they can sign in / create account.
+            const { data: { user } } = await supabase.auth.getUser();
+            const targetStep: Step = user ? (draft.returnStep ?? 4) : 3;
 
-    const params = new URLSearchParams(window.location.search);
-    const exp = params.get("exp");
-    if (exp) {
-      setSelectedExp(exp);
-      setStep(2);
-    }
+            if (targetStep === 4) {
+              // Auth succeeded — consume the draft
+              localStorage.removeItem(DRAFT_KEY);
+              setSkipPrefill(true);
+            }
+            // If not authed, leave the draft in localStorage so it's still
+            // available when they complete sign-in / registration.
+
+            setSelectedExp(draft.selectedExp ?? "");
+            setSelectedDate(draft.selectedDate ?? "");
+            setSelectedTime(draft.selectedTime ?? "");
+            setGroupSize(draft.groupSize ?? 2);
+            setContact(draft.contact ?? { name: "", email: "", phone: "", notes: "" });
+            setStep(targetStep);
+            return;
+          }
+          localStorage.removeItem(DRAFT_KEY);
+        }
+      } catch { /* ignore */ }
+
+      const params = new URLSearchParams(window.location.search);
+      const exp = params.get("exp");
+      if (exp) {
+        setSelectedExp(exp);
+        setStep(2);
+      }
+    };
+
+    init();
   }, []);
 
   // Save full booking state to localStorage and navigate to auth pages
