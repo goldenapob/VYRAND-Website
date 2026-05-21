@@ -1,20 +1,19 @@
 "use client";
 
 import { PayPalScriptProvider, PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 interface Props {
   amount: string;
   experienceName: string;
   groupSize: number;
+  onSuccess?: () => Promise<void> | void;
 }
 
-function PayPalButtonsWrapper({ amount, experienceName, groupSize }: Props) {
-  const router = useRouter();
+function PayPalButtonsWrapper({ amount, experienceName, groupSize, onSuccess }: Props) {
   const [{ isPending }] = usePayPalScriptReducer();
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   if (isPending) {
     return (
@@ -24,10 +23,10 @@ function PayPalButtonsWrapper({ amount, experienceName, groupSize }: Props) {
     );
   }
 
-  if (success) {
+  if (processing) {
     return (
       <div style={{ padding: "20px 0", textAlign: "center", color: "var(--accent2)", fontSize: "0.9rem", fontWeight: 600 }}>
-        Payment approved — redirecting…
+        Payment approved — confirming booking…
       </div>
     );
   }
@@ -66,8 +65,8 @@ function PayPalButtonsWrapper({ amount, experienceName, groupSize }: Props) {
           if (actions.order) {
             await actions.order.capture();
           }
-          setSuccess(true);
-          router.push("/booking/confirmed");
+          setProcessing(true);
+          await onSuccess?.();
         }}
         onError={() => {
           setError("Payment failed. Please try again or use a different account.");

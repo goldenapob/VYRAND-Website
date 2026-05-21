@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { experiences } from "@/lib/experiences";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowRight, ArrowLeft, Check, User, LogIn } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, User, LogIn, Shield } from "lucide-react";
+import PayPalCheckout from "@/components/PayPalCheckout";
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3 | 4 | 5;
 
 export default function BookingPage() {
   const router = useRouter();
@@ -172,6 +173,7 @@ export default function BookingPage() {
     { n: 2, label: "Date & Time" },
     { n: 3, label: "Your Details" },
     { n: 4, label: "Review" },
+    { n: 5, label: "Payment" },
   ];
 
   const availableTimes = [
@@ -200,6 +202,52 @@ export default function BookingPage() {
     if (step === 2) return selectedDate !== "" && selectedTime !== "";
     if (step === 3) return loggedInAs !== null;
     return true;
+  };
+
+  const handlePaymentSuccess = async () => {
+    if (!currentExp) return;
+    setSubmitting(true);
+    setSubmitError("");
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { saveAndLogin(); return; }
+
+    const { error } = await supabase.from("bookings").insert({
+      user_id: user.id,
+      experience_id: selectedExp,
+      booking_date: selectedDate,
+      booking_time: selectedTime,
+      group_size: groupSize,
+      total_price: totalPrice,
+      contact_name: contact.name,
+      contact_email: contact.email,
+      contact_phone: contact.phone,
+      notes: contact.notes || null,
+    });
+
+    if (error) {
+      setSubmitError("Payment was approved but booking failed. Please contact us at info@vyrand.com.");
+      setSubmitting(false);
+    } else {
+      await Promise.all([
+        supabase.from("profiles").upsert({
+          id: user.id,
+          full_name: contact.name,
+          phone: contact.phone,
+          updated_at: new Date().toISOString(),
+        }),
+        supabase.auth.updateUser({
+          data: { full_name: contact.name, phone: contact.phone },
+        }),
+      ]);
+      try {
+        localStorage.setItem(
+          "vyrand_contact",
+          JSON.stringify({ name: contact.name, email: contact.email, phone: contact.phone })
+        );
+      } catch { /* ignore */ }
+      router.push("/booking/confirmed");
+    }
   };
 
   return (
@@ -787,6 +835,84 @@ export default function BookingPage() {
           </div>
         )}
 
+        {/* STEP 5 — Payment */}
+        {step === 5 && currentExp && (
+          <div>
+            <h2 style={{ fontSize: "1.375rem", fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>
+              Payment
+            </h2>
+            <p style={{ fontSize: "0.875rem", color: "var(--muted)", marginBottom: 28 }}>
+              Pay safely via PayPal. No account needed — you can pay with a card through PayPal.
+            </p>
+
+            {/* Order mini-summary */}
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+                padding: "16px 20px",
+                backgroundColor: "var(--surface)",
+                marginBottom: 24,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <div style={{ fontSize: "0.9rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text)" }}>
+                  {currentExp.name} — {currentExp.sport}
+                </div>
+                <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: 2 }}>
+                  {groupSize} people · {selectedDate} · {selectedTime}
+                </div>
+              </div>
+              <div
+                style={{
+                  fontSize: "1.375rem",
+                  fontWeight: 800,
+                  background: "linear-gradient(90deg, #25a267, #f97316)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
+                {totalPrice}€
+              </div>
+            </div>
+
+            {/* Sandbox notice */}
+            <div
+              style={{
+                marginBottom: 24,
+                padding: "10px 14px",
+                backgroundColor: "rgba(37,162,103,0.06)",
+                border: "1px solid rgba(37,162,103,0.2)",
+                borderRadius: 8,
+                fontSize: "0.78rem",
+                color: "var(--muted)",
+              }}
+            >
+              <strong style={{ color: "var(--accent2)" }}>Sandbox mode</strong> — no real charges. Use a PayPal Sandbox test account.
+            </div>
+
+            <PayPalCheckout
+              amount={totalPrice.toFixed(2)}
+              experienceName={`${currentExp.name} — ${currentExp.sport}`}
+              groupSize={groupSize}
+              onSuccess={handlePaymentSuccess}
+            />
+
+            {submitError && (
+              <p style={{ fontSize: "0.82rem", color: "#f87171", marginTop: 12 }}>{submitError}</p>
+            )}
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center", marginTop: 20, color: "var(--muted)", fontSize: "0.75rem" }}>
+              <Shield size={12} style={{ color: "var(--accent)" }} />
+              Encrypted · Powered by PayPal
+            </div>
+          </div>
+        )}
+
         {/* Navigation */}
         <div
           style={{
@@ -809,76 +935,14 @@ export default function BookingPage() {
             </Link>
           )}
 
-          {step < 4 && !(step === 3 && !loggedInAs) ? (
+          {step < 5 && !(step === 3 && !loggedInAs) && (
             <button
               onClick={() => canProceed() && setStep((prev) => (prev + 1) as Step)}
               className="btn-primary"
               style={{ opacity: canProceed() ? 1 : 0.4, cursor: canProceed() ? "pointer" : "not-allowed" }}
             >
-              Continue <ArrowRight size={15} />
+              {step === 4 ? <>Proceed to Payment <ArrowRight size={15} /></> : <>Continue <ArrowRight size={15} /></>}
             </button>
-          ) : (
-            <button
-              onClick={async () => {
-                if (!currentExp) return;
-                setSubmitting(true);
-                setSubmitError("");
-
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) {
-                  saveAndLogin();
-                  return;
-                }
-
-                const { error } = await supabase.from("bookings").insert({
-                  user_id: user.id,
-                  experience_id: selectedExp,
-                  booking_date: selectedDate,
-                  booking_time: selectedTime,
-                  group_size: groupSize,
-                  total_price: totalPrice,
-                  contact_name: contact.name,
-                  contact_email: contact.email,
-                  contact_phone: contact.phone,
-                  notes: contact.notes || null,
-                });
-
-                if (error) {
-                  setSubmitError("Something went wrong. Please try again.");
-                  setSubmitting(false);
-                } else {
-                  // Persist name + phone to profiles table and user metadata
-                  await Promise.all([
-                    supabase.from("profiles").upsert({
-                      id: user.id,
-                      full_name: contact.name,
-                      phone: contact.phone,
-                      updated_at: new Date().toISOString(),
-                    }),
-                    supabase.auth.updateUser({
-                      data: { full_name: contact.name, phone: contact.phone },
-                    }),
-                  ]);
-                  try {
-                    localStorage.setItem(
-                      "vyrand_contact",
-                      JSON.stringify({ name: contact.name, email: contact.email, phone: contact.phone })
-                    );
-                  } catch { /* ignore */ }
-                  router.push("/booking/confirmed");
-                }
-              }}
-              className="btn-primary"
-              disabled={submitting}
-              style={{ fontSize: "1rem", padding: "13px 28px", opacity: submitting ? 0.6 : 1, cursor: submitting ? "not-allowed" : "pointer" }}
-            >
-              {submitting ? "Confirming..." : <>Confirm Booking <ArrowRight size={17} /></>}
-            </button>
-          )}
-          {submitError && (
-            <p style={{ fontSize: "0.85rem", color: "#f87171", marginTop: 8, textAlign: "right" }}>
-              {submitError}
-            </p>
           )}
         </div>
       </div>
